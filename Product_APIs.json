@@ -1,0 +1,2207 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "title" : "Products",
+    "description" : "Provides methods to create and manage subscription products.",
+    "version" : "1"
+  },
+  "externalDocs" : {
+    "description" : "API Developer Guide",
+    "url" : "https://help.sap.com/viewer/987aec876092428f88162e438acf80d6/latest/en-US/af7823491c90434c94d36e54a6328941.html"
+  },
+  "host" : "hostname",
+  "basePath" : "/api/product-service/v1",
+  "schemes" : [ "https" ],
+  "x-servers" : [ {
+    "url" : "https://{region}.revenue.cloud.sap/api/product-service/v1",
+    "description" : "SAP Subscription Billing API Endpoint",
+    "templates" : {
+      "region" : {
+        "description" : "SAP Subscription Billing Region",
+        "enum" : [ "eu10", "us10" ],
+        "default" : "eu10"
+      }
+    }
+  } ],
+  "securityDefinitions" : {
+    "oauth2" : {
+      "type" : "oauth2",
+      "description" : "To use this API, you need to obtain the OAuth client credentials (client ID and secret) using the SAP HANA Cloud Platform cockpit. After that, pass these client credentials to the SAP HANA Cloud Platform token endpoint to obtain an access token. <br>For more information, see the API Developer Guide.",
+      "tokenUrl" : "https://{identityzone}.authentication.{region}.hana.ondemand.com/oauth/token",
+      "flow" : "application",
+      "scopes" : {
+        "{identityzone}.product-rc_view" : "View products.",
+        "{identityzone}.product-rc_manage" : "Create and update products.",
+        "{identityzone}.product-rc_delete" : "Delete products."
+      }
+    }
+  },
+  "security" : [ {
+    "oauth2" : [ "{identityzone}.product-rc_view", "{identityzone}.product-rc_manage", "{identityzone}.product-rc_delete" ]
+  } ],
+  "x-sap-shortText" : "Enables you to manage products.",
+  "produces" : [ "application/json" ],
+  "tags" : [ {
+    "name" : "Batch Requests",
+    "description" : "Retrieve, create, update, or delete multiple products."
+  }, {
+    "name" : "Single Requests",
+    "description" : "Retrieve, create, update, or delete individual products."
+  }, {
+    "name" : "Search Requests",
+    "description" : "Search for products."
+  } ],
+  "definitions" : {
+    "subscriptionAspect" : {
+      "type" : "object",
+      "description" : "Attributes specific to a subscription product.",
+      "properties" : {
+        "externalReference" : {
+          "type" : "string",
+          "description" : "An identifier that is entered by the user and refers to external information, for example, a product name, a purchase order number, or a cost center."
+        },
+        "subscriptionType" : {
+          "type" : "string",
+          "description" : "The type of subscription that governs follow-up processes such as rating and billing.",
+          "enum" : [ "Test", "Trial/Beta", "Internal Billing", "Commercial" ],
+          "default" : "Commercial"
+        },
+        "marketAttributesList" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/marketAttribute"
+          }
+        },
+        "contractTerm" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 999,
+          "description" : "The period during which a customer is contractually bound to hold a subscription, defined in months."
+        },
+        "renewalTerm" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 999,
+          "description" : "The period by which the subscription extends automatically after the initial contract term, defined in months."
+        },
+        "termOfNotice" : {
+          "type" : "integer",
+          "minimum" : 1,
+          "maximum" : 999,
+          "description" : "The period of time to be observed if a customer wants to cancel a subscription, defined in days."
+        },
+        "allowMidBillCycleExpiration" : {
+          "type" : "boolean",
+          "description" : "If true, a subscription may expire during an active billing cycle."
+        },
+        "technicalResources" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/technicalResource"
+          }
+        },
+        "subscriptionParameters" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/subscriptionParameter"
+          }
+        }
+      },
+      "example" : {
+        "externalReference" : "XDB48-B",
+        "subscriptionType" : "Commercial",
+        "marketAttributesList" : [ {
+          "marketId" : "A1",
+          "ratePlanId" : "482952d0-0572-4cf5-822e-7e50e9077da7",
+          "ratePlanDescription" : "RatePlan for Market A1"
+        } ],
+        "contractTerm" : 24,
+        "renewalTerm" : 12,
+        "termOfNotice" : 14,
+        "allowMidBillCycleExpiration" : true,
+        "technicalResources" : [ {
+          "type" : "MOBILE_DATA",
+          "idType" : "Phone Number"
+        }, {
+          "type" : "MINUTES",
+          "idType" : "Phone Number"
+        } ],
+        "subscriptionParameters" : [ {
+          "code" : "LICENSES"
+        } ]
+      }
+    },
+    "batchIdPayload" : {
+      "type" : "array",
+      "items" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          }
+        }
+      },
+      "example" : [ {
+        "id" : "d69c4164a50754edfb30a746"
+      }, {
+        "id" : "339943cb9216bdbd2709daa4"
+      }, {
+        "id" : "non_existing_id"
+      } ]
+    },
+    "batchPayloadProductPOST" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/definitions/productForPost"
+      },
+      "example" : [ {
+        "code" : "A06",
+        "name" : "Audio Books",
+        "description" : "",
+        "soldElectronically" : true,
+        "published" : false,
+        "markets" : [ {
+          "marketId" : "A1",
+          "active" : true
+        } ],
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ],
+        "mixins" : {
+          "subscriptionProduct" : {
+            "externalReference" : "",
+            "subscriptionType" : "Commercial",
+            "marketAttributesList" : [ ],
+            "contractTerm" : 24,
+            "renewalTerm" : 12,
+            "termOfNotice" : 14,
+            "allowMidBillCycleExpiration" : true,
+            "technicalResources" : [ {
+              "type" : "MOBILE_DATA",
+              "idType" : "Phone Number"
+            }, {
+              "type" : "MINUTES",
+              "idType" : "Phone Number"
+            } ],
+            "subscriptionParameters" : [ {
+              "code" : "LICENSES"
+            }, {
+              "code" : "SEATS"
+            } ]
+          }
+        }
+      }, {
+        "code" : "A01",
+        "name" : "Audio Books",
+        "description" : "",
+        "soldElectronically" : true,
+        "published" : false,
+        "markets" : [ {
+          "marketId" : "A1",
+          "active" : true
+        } ],
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ],
+        "mixins" : {
+          "subscriptionProduct" : {
+            "externalReference" : "",
+            "subscriptionType" : "Commercial",
+            "marketAttributesList" : [ ],
+            "contractTerm" : 24,
+            "renewalTerm" : 12,
+            "termOfNotice" : 14,
+            "allowMidBillCycleExpiration" : true,
+            "technicalResources" : [ {
+              "type" : "MOBILE_DATA",
+              "idType" : "Phone Number"
+            }, {
+              "type" : "MINUTES",
+              "idType" : "Phone Number"
+            } ],
+            "subscriptionParameters" : [ {
+              "code" : "LICENSES"
+            }, {
+              "code" : "SEATS"
+            } ]
+          }
+        }
+      } ],
+      "title" : "batchPayloadProductPOST"
+    },
+    "batchPayloadProductPUT" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/definitions/product"
+      },
+      "example" : [ {
+        "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+        "code" : "A05",
+        "name" : "Audio Books",
+        "description" : "",
+        "soldElectronically" : true,
+        "published" : true,
+        "version" : 1,
+        "metadata" : {
+          "createdAt" : "2017-07-28T06:32:17.779Z",
+          "changedAt" : "2017-08-25T07:29:31.263Z"
+        },
+        "markets" : [ {
+          "marketId" : "A3",
+          "active" : true
+        } ],
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ],
+        "mixins" : {
+          "subscriptionProduct" : {
+            "externalReference" : "Test Reference",
+            "subscriptionType" : "Commercial",
+            "marketAttributesList" : [ {
+              "marketId" : "A3",
+              "ratePlanId" : "066a3218-6616-42da-ac22-8774e942d985",
+              "ratePlanDescription" : "$1200/month (100 included) + $13/usage + $50 one time + $20/user E2E"
+            } ],
+            "contractTerm" : 24,
+            "renewalTerm" : 12,
+            "termOfNotice" : 14,
+            "allowMidBillCycleExpiration" : true,
+            "technicalResources" : [ {
+              "type" : "MOBILE_DATA",
+              "idType" : "Phone Number"
+            }, {
+              "type" : "MINUTES",
+              "idType" : "Phone Number"
+            } ],
+            "subscriptionParameters" : [ {
+              "code" : "LICENSES"
+            }, {
+              "code" : "SEATS"
+            } ]
+          }
+        }
+      }, {
+        "id" : "c83f381f-3069-4cc8-b6d9-a41d5341802a",
+        "code" : "A02",
+        "name" : "Audio Books",
+        "description" : "",
+        "soldElectronically" : true,
+        "published" : true,
+        "version" : 1,
+        "metadata" : {
+          "createdAt" : "2017-07-28T06:32:17.779Z",
+          "changedAt" : "2017-08-25T07:29:31.263Z"
+        },
+        "markets" : [ {
+          "marketId" : "A1",
+          "active" : true
+        } ],
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ],
+        "mixins" : {
+          "subscriptionProduct" : {
+            "externalReference" : "Test External Reference",
+            "subscriptionType" : "Commercial",
+            "marketAttributesList" : [ {
+              "marketId" : "A1",
+              "ratePlanId" : "8af16cd9-1c06-4905-9682-434667196ced",
+              "ratePlanDescription" : "$2000 one time E2E"
+            } ],
+            "contractTerm" : 24,
+            "renewalTerm" : 12,
+            "termOfNotice" : 14,
+            "allowMidBillCycleExpiration" : true,
+            "technicalResources" : [ {
+              "type" : "MOBILE_DATA",
+              "idType" : "Phone Number"
+            }, {
+              "type" : "MINUTES",
+              "idType" : "Phone Number"
+            } ],
+            "subscriptionParameters" : [ {
+              "code" : "LICENSES"
+            }, {
+              "code" : "SEATS"
+            } ]
+          }
+        }
+      } ],
+      "title" : "batchPayloadProductPUT"
+    },
+    "batchResponse" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/definitions/intermediateResponseEntity"
+      },
+      "example" : [ {
+        "headers" : { },
+        "body" : {
+          "id" : "d69c4164a50754edfb30a746",
+          "code" : "3-year-onsite-warranty",
+          "name" : "3-year-onsite-warranty",
+          "description" : "3-year-onsite-warranty",
+          "soldElectronically" : true,
+          "published" : true,
+          "productType" : "subscriptionProduct",
+          "version" : 2,
+          "metadata" : {
+            "createdAt" : "2017-07-28T06:32:17.779Z",
+            "changedAt" : "2017-08-25T07:29:31.263Z"
+          },
+          "markets" : [ {
+            "marketId" : "A1",
+            "active" : true
+          } ],
+          "customReferences" : [ {
+            "typeCode" : "VENDOR_ID",
+            "id" : "153986"
+          }, {
+            "typeCode" : "SKU",
+            "id" : "300"
+          } ],
+          "mixins" : {
+            "subscriptionProduct" : {
+              "subscriptionAspectId" : "61f6d18e-abe3-40de-9ac3-77d418f014b1",
+              "externalReference" : "test external reference 01",
+              "subscriptionType" : "Commercial",
+              "marketAttributesList" : [ {
+                "marketId" : "A1",
+                "ratePlanId" : "f992a90e-f19b-4283-92fc-7174de202a77",
+                "ratePlanDescription" : "Test Rate Plan 01"
+              } ],
+              "contractTerm" : 24,
+              "renewalTerm" : 12,
+              "termOfNotice" : 14,
+              "allowMidBillCycleExpiration" : true,
+              "technicalResources" : [ {
+                "type" : "MOBILE_DATA",
+                "idType" : "Phone Number"
+              }, {
+                "type" : "MINUTES",
+                "idType" : "Phone Number"
+              } ],
+              "subscriptionParameters" : [ {
+                "code" : "LICENSE"
+              } ]
+            }
+          }
+        },
+        "statusCode" : "OK",
+        "statusCodeValue" : 200
+      }, {
+        "headers" : { },
+        "body" : {
+          "id" : "339943cb9216bdbd2709daa4",
+          "code" : "3-year-bring-in-service",
+          "name" : "3-year-bring-in-service",
+          "description" : "3-year-bring-in-service",
+          "soldElectronically" : true,
+          "published" : true,
+          "productType" : "subscriptionProduct",
+          "version" : 6,
+          "metadata" : {
+            "createdAt" : "2018-06-14T08:04:13.782Z",
+            "changedAt" : "2018-06-15T13:57:14.541Z"
+          },
+          "markets" : [ {
+            "marketId" : "A1",
+            "active" : true
+          }, {
+            "marketId" : "A2",
+            "active" : true
+          } ],
+          "customReferences" : [ {
+            "typeCode" : "VENDOR_ID",
+            "id" : "153986"
+          }, {
+            "typeCode" : "SKU",
+            "id" : "300"
+          } ],
+          "mixins" : {
+            "subscriptionProduct" : {
+              "subscriptionAspectId" : "49f77c73-15c5-47f5-af0a-e1320b00e209",
+              "externalReference" : "external reference 02",
+              "subscriptionType" : "Commercial",
+              "marketAttributesList" : [ {
+                "marketId" : "A1",
+                "ratePlanId" : "6b30ad58-5c4a-403f-91da-b06e1dbf8c7b",
+                "ratePlanDescription" : "Rate Plan 02"
+              }, {
+                "marketId" : "r432r23",
+                "ratePlanId" : "e6f68295-321c-4fcf-af40-36273dc6bee9",
+                "ratePlanDescription" : "Rate Plan 03"
+              } ],
+              "contractTerm" : 12,
+              "renewalTerm" : 12,
+              "termOfNotice" : 14,
+              "allowMidBillCycleExpiration" : true,
+              "technicalResources" : [ {
+                "type" : "MOBILE_DATA",
+                "idType" : "Phone Number"
+              }, {
+                "type" : "MINUTES",
+                "idType" : "Phone Number"
+              } ],
+              "subscriptionParameters" : [ {
+                "code" : "LICENSE"
+              } ]
+            }
+          }
+        },
+        "statusCode" : "OK",
+        "statusCodeValue" : 200
+      }, {
+        "headers" : { },
+        "body" : { },
+        "statusCode" : "NOT_FOUND",
+        "statusCodeValue" : 404
+      } ]
+    },
+    "market" : {
+      "type" : "object",
+      "description" : "The organizational unit that offers a product, sets the legal framework and reflects various business-relevant attributes including a reference to a sales organization and further aspects, such as currency, language, and time zone.",
+      "properties" : {
+        "marketId" : {
+          "type" : "string",
+          "description" : "The unique identifier of the market."
+        },
+        "active" : {
+          "type" : "boolean",
+          "description" : "If true, the market is active and the product can be offered in the respective market."
+        }
+      },
+      "example" : {
+        "markets" : [ {
+          "marketId" : "A1",
+          "active" : true
+        }, {
+          "marketId" : "A2",
+          "active" : false
+        } ]
+      }
+    },
+    "customReferences" : {
+      "type" : "object",
+      "properties" : {
+        "typeCode" : {
+          "type" : "string",
+          "description" : "The code representing the type of the reference.",
+          "pattern" : "[A-Za-z0-9_]*$",
+          "minLength" : 1,
+          "maxLength" : 50
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "The identifier of the reference.",
+          "pattern" : "^[\\w.!@#$%&*+^=?| ~-]{1,255}$",
+          "minLength" : 1,
+          "maxLength" : 255
+        }
+      },
+      "required" : [ "typeCode", "id" ],
+      "example" : {
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ]
+      }
+    },
+    "metadata" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time",
+          "description" : "The date and time the product was created."
+        },
+        "changedAt" : {
+          "type" : "string",
+          "format" : "date-time",
+          "description" : "The date and time the product was last changed."
+        }
+      },
+      "example" : {
+        "metadata" : {
+          "createdAt" : "2018-06-143T08:38:46.590Z",
+          "changedAt" : "2018-06-15T12:17:33.256Z"
+        }
+      }
+    },
+    "product" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "description" : "The unique identifier of the product."
+        },
+        "code" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "description" : "The user-defined identifier of the product."
+        },
+        "name" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 255,
+          "description" : "The name of the product."
+        },
+        "description" : {
+          "type" : "string",
+          "maxLength" : 5000,
+          "description" : "The description of the product."
+        },
+        "soldElectronically" : {
+          "type" : "boolean",
+          "description" : "If true, the product is sold electronically.",
+          "default" : true
+        },
+        "published" : {
+          "type" : "boolean",
+          "description" : "If true, the product is published and available for further processing.",
+          "default" : false
+        },
+        "productType" : {
+          "type" : "string",
+          "description" : "The type of the product, for example, a subscription product.",
+          "default" : "subscriptionProduct"
+        },
+        "version" : {
+          "type" : "integer",
+          "description" : "The version of the product, used for optimitic locking."
+        },
+        "metadata" : {
+          "$ref" : "#/definitions/metadata"
+        },
+        "markets" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/market"
+          }
+        },
+        "customReferences" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/customReferences"
+          }
+        },
+        "mixins" : {
+          "type" : "object",
+          "properties" : {
+            "subscriptionProduct" : {
+              "$ref" : "#/definitions/subscriptionAspect"
+            }
+          }
+        }
+      },
+      "required" : [ "id", "code", "name", "version", "mixins" ],
+      "example" : {
+        "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+        "code" : "A01",
+        "name" : "Audio Books",
+        "description" : "Audio Books for download",
+        "soldElectronically" : true,
+        "published" : false,
+        "version" : 1,
+        "metadata" : {
+          "createdAt" : "2017-07-28T06:32:17.779Z",
+          "changedAt" : "2017-08-25T07:29:31.263Z"
+        },
+        "markets" : [ {
+          "marketId" : "A2",
+          "active" : true
+        } ],
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ],
+        "mixins" : {
+          "subscriptionProduct" : {
+            "externalReference" : "External Reference",
+            "subscriptionType" : "Commercial",
+            "marketAttributesList" : [ {
+              "marketId" : "A2",
+              "ratePlanId" : "240df4e8-8d7d-43fb-9abe-104db478034f",
+              "ratePlanDescription" : "RatePlan for books"
+            } ],
+            "contractTerm" : 24,
+            "renewalTerm" : 12,
+            "termOfNotice" : 14,
+            "allowMidBillCycleExpiration" : true,
+            "technicalResources" : [ {
+              "type" : "MOBILE_DATA",
+              "idType" : "Phone Number"
+            }, {
+              "type" : "MINUTES",
+              "idType" : "Phone Number"
+            } ],
+            "subscriptionParameters" : [ {
+              "code" : "LICENSES"
+            } ]
+          }
+        }
+      }
+    },
+    "productForPost" : {
+      "type" : "object",
+      "properties" : {
+        "code" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "description" : "The user-defined identifier of the product."
+        },
+        "name" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 255,
+          "description" : "The name of the product."
+        },
+        "description" : {
+          "type" : "string",
+          "maxLength" : 5000,
+          "description" : "The description of the product."
+        },
+        "soldElectronically" : {
+          "type" : "boolean",
+          "description" : "If true, the product is sold electronically.",
+          "default" : true
+        },
+        "published" : {
+          "type" : "boolean",
+          "description" : "If true, the product is published and available for further processing.",
+          "default" : false
+        },
+        "productType" : {
+          "type" : "string",
+          "description" : "The type of the product, for example, a subscription product.",
+          "default" : "subscriptionProduct"
+        },
+        "markets" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/market"
+          }
+        },
+        "customReferences" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/customReferences"
+          }
+        },
+        "mixins" : {
+          "type" : "object",
+          "properties" : {
+            "subscriptionProduct" : {
+              "$ref" : "#/definitions/subscriptionAspect"
+            }
+          },
+          "required" : [ "subscriptionProduct" ]
+        }
+      },
+      "required" : [ "code", "name", "mixins" ],
+      "example" : {
+        "code" : "A01",
+        "name" : "Audio Books",
+        "description" : "Audio Books for download",
+        "soldElectronically" : true,
+        "published" : false,
+        "markets" : [ {
+          "marketId" : "A2",
+          "active" : true
+        } ],
+        "customReferences" : [ {
+          "typeCode" : "VENDOR_ID",
+          "id" : "153986"
+        }, {
+          "typeCode" : "SKU",
+          "id" : "300"
+        } ],
+        "mixins" : {
+          "subscriptionProduct" : {
+            "externalReference" : "External Reference",
+            "subscriptionType" : "Commercial",
+            "marketAttributesList" : [ {
+              "marketId" : "A2",
+              "ratePlanId" : "240df4e8-8d7d-43fb-9abe-104db478034f",
+              "ratePlanDescription" : "RatePlan for books"
+            } ],
+            "contractTerm" : 24,
+            "renewalTerm" : 12,
+            "termOfNotice" : 14,
+            "allowMidBillCycleExpiration" : true,
+            "technicalResources" : [ {
+              "type" : "MOBILE_DATA",
+              "idType" : "Phone Number"
+            }, {
+              "type" : "MINUTES",
+              "idType" : "Phone Number"
+            } ],
+            "subscriptionParameters" : [ {
+              "code" : "LICENSES"
+            } ]
+          }
+        }
+      }
+    },
+    "error" : {
+      "title" : "error",
+      "description" : "Schema for API specified errors.",
+      "type" : "object",
+      "properties" : {
+        "status" : {
+          "minimum" : 100,
+          "maximum" : 599,
+          "description" : "Original HTTP error code. It should be consistent with the response HTTP code.",
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "type" : {
+          "pattern" : "[a-z]+[a-z_]*[a-z]+",
+          "description" : "Classification of the error type. Lower case with underscore, for example, validation_failure.",
+          "type" : "string"
+        },
+        "message" : {
+          "description" : "Descriptive error message for debugging.",
+          "type" : "string"
+        },
+        "details" : {
+          "description" : "List of problems causing this error.",
+          "type" : "array",
+          "items" : {
+            "title" : "errorDetail",
+            "description" : "Schema for specific error cause.",
+            "type" : "object",
+            "properties" : {
+              "field" : {
+                "description" : "A bean notation expression specifying the element in request data causing the error, for example, product.variants[3].name.This can be empty if violation was not field specific.",
+                "type" : "string"
+              },
+              "type" : {
+                "pattern" : "[a-z]+[a-z_]*[a-z]+",
+                "description" : "Classification of the error detail type. Lower case with underscore, for example, missing_value. This value must be always interpreted in context of the general error type.",
+                "type" : "string"
+              },
+              "message" : {
+                "description" : "Descriptive error detail message for debugging.",
+                "type" : "string"
+              }
+            },
+            "required" : [ "type" ]
+          }
+        }
+      },
+      "required" : [ "status", "type" ]
+    },
+    "technicalResource" : {
+      "type" : "object",
+      "description" : "An ID or reference that identifies a subscriber and the subscribed service in an external technical system. Technical resources are used to record the usage of a service.",
+      "properties" : {
+        "type" : {
+          "type" : "string",
+          "maxLength" : 50,
+          "description" : "The identifier of the technical resource.",
+          "pattern" : "^[a-zA-Z][A-Za-z0-9_]*$"
+        },
+        "idType" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 50,
+          "description" : "The type or format of the technical resource ID, for example, a phone number or an email address."
+        }
+      }
+    },
+    "marketAttribute" : {
+      "type" : "object",
+      "properties" : {
+        "marketId" : {
+          "type" : "string",
+          "minLength" : 1,
+          "maxLength" : 255,
+          "description" : "The unique identifier of the market.",
+          "pattern" : "^[a-zA-Z0-9_-]{1}[a-zA-Z0-9 _-]{0,254}$"
+        },
+        "ratePlanId" : {
+          "type" : "string",
+          "description" : "The unique identifier of the rate plan.",
+          "pattern" : "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
+        },
+        "ratePlanDescription" : {
+          "type" : "string",
+          "maxLength" : 255,
+          "description" : "The description of the rate plan."
+        }
+      },
+      "required" : [ "marketId", "ratePlanId" ]
+    },
+    "subscriptionParameter" : {
+      "type" : "object",
+      "description" : "Additional attributes that determine provisioning of a subscription.",
+      "properties" : {
+        "code" : {
+          "type" : "string",
+          "maxLength" : 50,
+          "description" : "The user-defined identifier for the subscription parameter.",
+          "pattern" : "^[a-zA-Z][A-Za-z0-9_]*$"
+        }
+      }
+    },
+    "intermediateResponseEntity" : {
+      "type" : "object",
+      "properties" : {
+        "body" : {
+          "$ref" : "#/definitions/responseEntityElement"
+        },
+        "statusCode" : {
+          "type" : "string",
+          "enum" : [ "OK", "CREATED", "NO_CONTENT", "PARTIAL_CONTENT", "BAD_REQUEST", "NOT_FOUND", "CONFLICT", "PRECONDITION_FAILED", "INTERNAL_SERVER_ERROR" ]
+        },
+        "headers" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "statusCodeValue" : {
+          "type" : "integer"
+        }
+      }
+    },
+    "responseEntityElement" : {
+      "type" : "object",
+      "properties" : { }
+    }
+  },
+  "parameters" : {
+    "coreOnlySingle" : {
+      "description" : "By default, the `coreOnly` parameter is set to `false`. If you set it to `true`, products will be returned without mixin data (that is, data specific to a particular product type).",
+      "type" : "boolean",
+      "in" : "query",
+      "name" : "coreOnly"
+    },
+    "coreOnlyMultiple" : {
+      "description" : "By default, the `coreOnly` parameter is set to `true`. If you set it to `false`, products will be returned with mixin data (that is, data specific to a particular product type).",
+      "type" : "boolean",
+      "in" : "query",
+      "name" : "coreOnly"
+    },
+    "changedAfter" : {
+      "description" : "Returns products that were created or changed on or after a specified date, for example, `changedAfter=2017-08-01T04:00:00.000Z`.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "changedAfter"
+    },
+    "pageNumber" : {
+      "default" : 0,
+      "minimum" : 0,
+      "description" : "The page number to be retrieved where the size of the pages must be specified by the pageSize parameter. <br>The number of the first page is `0`.",
+      "type" : "integer",
+      "format" : "int32",
+      "in" : "query",
+      "name" : "pageNumber"
+    },
+    "pageSize" : {
+      "default" : 100,
+      "minimum" : 1,
+      "description" : "The number of documents retrieved on each page. <br>For example, `pageNumber=2&pageSize=30` retrieves the third page. The page contains 30 elements. This means that from the total list, you get the elements 61-90. <br>If you do not provide a page size, the size is set to `100` as a default.",
+      "type" : "integer",
+      "format" : "int32",
+      "in" : "query",
+      "name" : "pageSize"
+    },
+    "q" : {
+      "description" : "Returns a list of products containing the product `code`, `name`, or `description` specified in the query string, for example, `q=SAMPLE_PRODUCT`.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "q"
+    },
+    "published" : {
+      "description" : "Returns products by product status, for example, `published=true` or `published=false`.",
+      "type" : "boolean",
+      "in" : "query",
+      "name" : "published"
+    },
+    "productType" : {
+      "description" : "Returns products by productType, for example, `productType=subscriptionProduct`.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "productType"
+    },
+    "marketId" : {
+      "description" : "Returns products by activated market, for example, `market=A1`.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "market"
+    },
+    "sortBy" : {
+      "description" : "Defines the attributes to be used for sorting the results. <br>Products can be sorted by `name`, `description`, `code`, `ID`, `createdAt` and `changedAt`.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "sortBy"
+    },
+    "customReferences.typeCode" : {
+      "description" : "Filter products by the identifying typeCode (reference type) of a custom reference, for example, `customReferences.typeCode=VENDOR_ID`. If provided, products that have a custom reference with this type code are returned. <br> If you search for several type codes, they are combined with a logical **OR**. In that case, all products that contain at least one of the given type codes are returned. <br> If you search for a combination of several type codes and IDs, the type codes and IDs are combined with a logical **AND**. In that case, all products that contain at least one of the given type codes with one of the given IDs are returned.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "customReferences.typeCode"
+    },
+    "customReferences.id" : {
+      "description" : "Filters products by the ID of a custom reference, for example, `customReferences.id=153986` . If provided, products that have a custom reference with this ID are returned. <br> If you search for several IDs, they are combined with a logical **OR**. In that case, all products that contain at least one of the given IDs are returned. <br> If you search for a combination of several type codes and IDs, the type codes and IDs are combined with a logical **AND**. In that case, all products that contain at least one of the given type codes with one of the given IDs are returned.",
+      "type" : "string",
+      "in" : "query",
+      "name" : "customReferences.id"
+    }
+  },
+  "paths" : {
+    "/products" : {
+      "get" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Retrieves products.",
+        "description" : "Retrieves a collection of products.",
+        "operationId" : "getProductsUsingGET",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "$ref" : "#/parameters/coreOnlyMultiple"
+        }, {
+          "$ref" : "#/parameters/pageNumber"
+        }, {
+          "$ref" : "#/parameters/pageSize"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_view" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Product retrieved successfully.",
+            "examples" : {
+              "application/json" : [ {
+                "id" : "d69c4164a50754edfb30a746",
+                "code" : "3-year-onsite-warranty",
+                "name" : "3-year-onsite-warranty",
+                "description" : "3-year-onsite-warranty",
+                "soldElectronically" : true,
+                "published" : true,
+                "productType" : "subscriptionProduct",
+                "version" : 2,
+                "metadata" : {
+                  "createdAt" : "2017-07-28T06:32:17.779Z",
+                  "changedAt" : "2017-08-25T07:29:31.263Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A1",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : { }
+              }, {
+                "id" : "339943cb9216bdbd2709daa4",
+                "code" : "3-year-bring-in-service",
+                "name" : "3-year-bring-in-service",
+                "description" : "3-year-bring-in-service",
+                "soldElectronically" : true,
+                "published" : true,
+                "productType" : "subscriptionProduct",
+                "version" : 6,
+                "metadata" : {
+                  "createdAt" : "2018-06-14T08:04:13.782Z",
+                  "changedAt" : "2018-06-15T13:57:14.541Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A1",
+                  "active" : true
+                }, {
+                  "marketId" : "A2",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : { }
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/definitions/product"
+            }
+          },
+          "404" : {
+            "description" : "The specified product does not exist.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Creates a product.",
+        "description" : "Creates a new product. <br>For information about the applicable constraints and logic, see the API Developer Guide.",
+        "operationId" : "createProductUsingPOST",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "product",
+          "description" : "The product to be created.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/productForPost"
+          }
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_manage" ]
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Product created successfully.",
+            "examples" : {
+              "application/json" : {
+                "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+                "code" : "A01",
+                "name" : "Audio Books",
+                "description" : "Audio Books for download",
+                "soldElectronically" : true,
+                "published" : false,
+                "version" : 1,
+                "metadata" : {
+                  "createdAt" : "2017-07-28T06:32:17.779Z",
+                  "changedAt" : "2017-08-25T07:29:31.263Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A2",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : {
+                  "subscriptionProduct" : {
+                    "externalReference" : "External Reference",
+                    "subscriptionType" : "Commercial",
+                    "marketAttributesList" : [ {
+                      "marketId" : "A2",
+                      "ratePlanId" : "240df4e8-8d7d-43fb-9abe-104db478034f",
+                      "ratePlanDescription" : "RatePlan for books"
+                    } ],
+                    "contractTerm" : 24,
+                    "renewalTerm" : 12,
+                    "termOfNotice" : 14,
+                    "allowMidBillCycleExpiration" : true,
+                    "technicalResources" : [ {
+                      "type" : "MOBILE_DATA",
+                      "idType" : "Phone Number"
+                    }, {
+                      "type" : "MINUTES",
+                      "idType" : "Phone Number"
+                    } ],
+                    "subscriptionParameters" : [ {
+                      "code" : "LICENSES"
+                    } ]
+                  }
+                }
+              }
+            },
+            "schema" : {
+              "$ref" : "#/definitions/product"
+            }
+          },
+          "400" : {
+            "description" : "Your input data is not valid or not in a consistent format. Please check it and try again. <br>You can also check the response payload for more information.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/products/code/{code}" : {
+      "get" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Retrieves products by code.",
+        "description" : "Retrieves products by code.",
+        "operationId" : "getProductByCodeUsingGET",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "name" : "code",
+          "in" : "path",
+          "description" : "The user-defined identifier of a product, for example, `SAMPLE_PROD`.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "$ref" : "#/parameters/coreOnlySingle"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_view" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Product retrieved successfully.",
+            "examples" : {
+              "application/json" : {
+                "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+                "code" : "A01",
+                "name" : "Audio Books",
+                "description" : "Audio Books for download",
+                "soldElectronically" : true,
+                "published" : false,
+                "version" : 2,
+                "metadata" : {
+                  "createdAt" : "2018-06-15T06:32:17.779Z",
+                  "changedAt" : "2018-06-16T07:29:31.263Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A2",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : {
+                  "subscriptionProduct" : {
+                    "externalReference" : "External Reference",
+                    "subscriptionType" : "Commercial",
+                    "marketAttributesList" : [ {
+                      "marketId" : "A2",
+                      "ratePlanId" : "240df4e8-8d7d-43fb-9abe-104db478034f",
+                      "ratePlanDescription" : "RatePlan for books"
+                    } ],
+                    "contractTerm" : 24,
+                    "renewalTerm" : 12,
+                    "termOfNotice" : 14,
+                    "allowMidBillCycleExpiration" : true,
+                    "technicalResources" : [ {
+                      "type" : "MOBILE_DATA",
+                      "idType" : "Phone Number"
+                    }, {
+                      "type" : "MINUTES",
+                      "idType" : "Phone Number"
+                    } ],
+                    "subscriptionParameters" : [ {
+                      "code" : "LICENSES"
+                    } ]
+                  }
+                }
+              }
+            },
+            "schema" : {
+              "$ref" : "#/definitions/product"
+            }
+          },
+          "404" : {
+            "description" : "The specified product does not exist.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/products/search" : {
+      "get" : {
+        "tags" : [ "Search Requests" ],
+        "summary" : "Search for products.",
+        "description" : "Search for products using different search parameters. <br>For more information about additional header fields, see the API Developer Guide.",
+        "operationId" : "getProductBySearchTermUsingGET",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "$ref" : "#/parameters/coreOnlyMultiple"
+        }, {
+          "$ref" : "#/parameters/changedAfter"
+        }, {
+          "$ref" : "#/parameters/marketId"
+        }, {
+          "$ref" : "#/parameters/pageNumber"
+        }, {
+          "$ref" : "#/parameters/pageSize"
+        }, {
+          "$ref" : "#/parameters/productType"
+        }, {
+          "$ref" : "#/parameters/published"
+        }, {
+          "$ref" : "#/parameters/q"
+        }, {
+          "$ref" : "#/parameters/sortBy"
+        }, {
+          "$ref" : "#/parameters/customReferences.typeCode"
+        }, {
+          "$ref" : "#/parameters/customReferences.id"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_view" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Products retrieved successfully.",
+            "headers" : {
+              "x-count" : {
+                "type" : "integer",
+                "description" : "Total number of products that match the search criteria."
+              }
+            },
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/product"
+              }
+            },
+            "examples" : {
+              "application/json" : [ {
+                "id" : "d69c4164a50754edfb30a746",
+                "code" : "3-year-onsite-warranty",
+                "name" : "3-year-onsite-warranty",
+                "description" : "3-year-onsite-warranty",
+                "soldElectronically" : true,
+                "published" : true,
+                "productType" : "subscriptionProduct",
+                "version" : 2,
+                "metadata" : {
+                  "createdAt" : "2017-07-28T06:32:17.779Z",
+                  "changedAt" : "2017-08-25T07:29:31.263Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A1",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : {
+                  "subscriptionProduct" : {
+                    "subscriptionAspectId" : "61f6d18e-abe3-40de-9ac3-77d418f014b1",
+                    "externalReference" : "test external reference 01",
+                    "subscriptionType" : "Commercial",
+                    "marketAttributesList" : [ {
+                      "marketId" : "A1",
+                      "ratePlanId" : "f992a90e-f19b-4283-92fc-7174de202a77",
+                      "ratePlanDescription" : "Test Rate Plan 01"
+                    } ],
+                    "contractTerm" : 24,
+                    "renewalTerm" : 12,
+                    "termOfNotice" : 14,
+                    "allowMidBillCycleExpiration" : true,
+                    "technicalResources" : [ {
+                      "type" : "MOBILE_DATA",
+                      "idType" : "Phone Number"
+                    }, {
+                      "type" : "MINUTES",
+                      "idType" : "Phone Number"
+                    } ],
+                    "subscriptionParameters" : [ {
+                      "code" : "LICENSE"
+                    } ]
+                  }
+                }
+              }, {
+                "id" : "339943cb9216bdbd2709daa4",
+                "code" : "3-year-bring-in-service",
+                "name" : "3-year-bring-in-service",
+                "description" : "3-year-bring-in-service",
+                "soldElectronically" : true,
+                "published" : true,
+                "productType" : "subscriptionProduct",
+                "version" : 6,
+                "metadata" : {
+                  "createdAt" : "2018-06-14T08:04:13.782Z",
+                  "changedAt" : "2018-06-15T13:57:14.541Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A1",
+                  "active" : true
+                }, {
+                  "marketId" : "A2",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : {
+                  "subscriptionProduct" : {
+                    "subscriptionAspectId" : "49f77c73-15c5-47f5-af0a-e1320b00e209",
+                    "externalReference" : "external reference 02",
+                    "subscriptionType" : "Commercial",
+                    "marketAttributesList" : [ {
+                      "marketId" : "A1",
+                      "ratePlanId" : "6b30ad58-5c4a-403f-91da-b06e1dbf8c7b",
+                      "ratePlanDescription" : "Rate Plan 02"
+                    }, {
+                      "marketId" : "A2",
+                      "ratePlanId" : "e6f68295-321c-4fcf-af40-36273dc6bee9",
+                      "ratePlanDescription" : "Rate Plan 03"
+                    } ],
+                    "contractTerm" : 24,
+                    "renewalTerm" : 12,
+                    "termOfNotice" : 14,
+                    "allowMidBillCycleExpiration" : true,
+                    "technicalResources" : [ {
+                      "type" : "MOBILE_DATA",
+                      "idType" : "Phone Number"
+                    }, {
+                      "type" : "MINUTES",
+                      "idType" : "Phone Number"
+                    } ],
+                    "subscriptionParameters" : [ {
+                      "code" : "LICENSE"
+                    } ]
+                  }
+                }
+              } ]
+            }
+          }
+        }
+      }
+    },
+    "/products/{productId}" : {
+      "get" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Retrieves a product with a specific ID.",
+        "description" : "Retrieves a single product with a specific identifier.",
+        "operationId" : "getProductByIdUsingGET",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "$ref" : "#/parameters/coreOnlySingle"
+        }, {
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "name" : "productId",
+          "in" : "path",
+          "description" : "The technical identifier of a product, for example, `e10fhj99-5a51-419a-btr6-5d37bb2be4ht`.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_view" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Product retrieved successfully.",
+            "examples" : {
+              "application/json" : {
+                "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+                "code" : "A01",
+                "name" : "Audio Books",
+                "description" : "Audio Books for download",
+                "soldElectronically" : true,
+                "published" : false,
+                "version" : 2,
+                "metadata" : {
+                  "createdAt" : "2018-06-15T06:32:17.779Z",
+                  "changedAt" : "2018-06-16T07:29:31.263Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A2",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : {
+                  "subscriptionProduct" : {
+                    "externalReference" : "External Reference",
+                    "subscriptionType" : "Commercial",
+                    "marketAttributesList" : [ {
+                      "marketId" : "A2",
+                      "ratePlanId" : "240df4e8-8d7d-43fb-9abe-104db478034f",
+                      "ratePlanDescription" : "RatePlan for books"
+                    } ],
+                    "contractTerm" : 24,
+                    "renewalTerm" : 12,
+                    "termOfNotice" : 14,
+                    "allowMidBillCycleExpiration" : true,
+                    "technicalResources" : [ {
+                      "type" : "MOBILE_DATA",
+                      "idType" : "Phone Number"
+                    }, {
+                      "type" : "MINUTES",
+                      "idType" : "Phone Number"
+                    } ],
+                    "subscriptionParameters" : [ {
+                      "code" : "LICENSES"
+                    } ]
+                  }
+                }
+              }
+            },
+            "schema" : {
+              "$ref" : "#/definitions/product"
+            }
+          },
+          "404" : {
+            "description" : "The specified product does not exist.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Updates a product with a specific ID.",
+        "description" : "Updates a single product with a specific identifier. <br>For more information about the applicable constraints and logic, see the API Developer Guide.",
+        "operationId" : "changeProductUsingPUT",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "product",
+          "description" : "The product to be updated.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/product"
+          }
+        }, {
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "name" : "productId",
+          "in" : "path",
+          "description" : "The technical identifier of a product, for example, `e10fhj99-5a51-419a-btr6-5d37bb2be4ht`.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_manage" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Product updated successfully.",
+            "examples" : {
+              "application/json" : {
+                "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+                "code" : "A01",
+                "name" : "Audio Books",
+                "description" : "Audio Books for download",
+                "soldElectronically" : true,
+                "published" : false,
+                "version" : 2,
+                "metadata" : {
+                  "createdAt" : "2018-06-15T06:32:17.779Z",
+                  "changedAt" : "2018-06-16T07:29:31.263Z"
+                },
+                "markets" : [ {
+                  "marketId" : "A2",
+                  "active" : true
+                } ],
+                "customReferences" : [ {
+                  "typeCode" : "VENDOR_ID",
+                  "id" : "153986"
+                }, {
+                  "typeCode" : "SKU",
+                  "id" : "300"
+                } ],
+                "mixins" : {
+                  "subscriptionProduct" : {
+                    "externalReference" : "External Reference",
+                    "subscriptionType" : "Commercial",
+                    "marketAttributesList" : [ {
+                      "marketId" : "A2",
+                      "ratePlanId" : "240df4e8-8d7d-43fb-9abe-104db478034f",
+                      "ratePlanDescription" : "RatePlan for books"
+                    } ],
+                    "contractTerm" : 24,
+                    "renewalTerm" : 12,
+                    "termOfNotice" : 14,
+                    "allowMidBillCycleExpiration" : true,
+                    "technicalResources" : [ {
+                      "type" : "MOBILE_DATA",
+                      "idType" : "Phone Number"
+                    }, {
+                      "type" : "MINUTES",
+                      "idType" : "Phone Number"
+                    } ],
+                    "subscriptionParameters" : [ {
+                      "code" : "LICENSES"
+                    } ]
+                  }
+                }
+              }
+            },
+            "schema" : {
+              "$ref" : "#/definitions/product"
+            }
+          },
+          "400" : {
+            "description" : "Your input data is not valid or not in a consistent format. Please check it and try again. <br>You can also check the response payload for more information.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          },
+          "404" : {
+            "description" : "The specified product does not exist.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          },
+          "409" : {
+            "description" : "The product could not be updated because the `code` or the `productId` already exists.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          },
+          "412" : {
+            "description" : "The product could not be updated because it was updated by another user in the meantime.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Deletes a product with a specific ID.",
+        "description" : "Deletes a product with a specific identifier.",
+        "operationId" : "deleteUsingDELETE",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "name" : "productId",
+          "in" : "path",
+          "description" : "The technical identifier of a product, for example, `e10fhj99-5a51-419a-btr6-5d37bb2be4ht`.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_delete" ]
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Product deleted successfully."
+          },
+          "404" : {
+            "description" : "The specified product does not exist.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/products/{productId}/{mixinId}" : {
+      "get" : {
+        "tags" : [ "Single Requests" ],
+        "summary" : "Retrieves the mixin data of a product with a specific ID.",
+        "description" : "Retrieves the mixin data of a product with a specific identifier.",
+        "operationId" : "getProductAspectByMixinIdUsingGET",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "name" : "mixinId",
+          "in" : "path",
+          "description" : "The identifier of a mixin, for example, `subscriptionProduct`.",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "pattern" : "[a-zA-Z0-9_\\-]*",
+          "name" : "productId",
+          "in" : "path",
+          "description" : "The technical identifier of a product, for example, `e10fhj99-5a51-419a-btr6-5d37bb2be4ht`.",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_view" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Product retrieved successfully.",
+            "examples" : {
+              "application/json" : {
+                "externalReference" : "XDB48-B",
+                "subscriptionType" : "Commercial",
+                "marketAttributesList" : [ {
+                  "marketId" : "A1",
+                  "ratePlanId" : "482952d0-0572-4cf5-822e-7e50e9077da7",
+                  "ratePlanDescription" : "RatePlan for Market A1"
+                } ],
+                "contractTerm" : 24,
+                "renewalTerm" : 12,
+                "termOfNotice" : 14,
+                "allowMidBillCycleExpiration" : true,
+                "technicalResources" : [ {
+                  "type" : "MOBILE_DATA",
+                  "idType" : "Phone Number"
+                }, {
+                  "type" : "MINUTES",
+                  "idType" : "Phone Number"
+                } ],
+                "subscriptionParameters" : [ {
+                  "code" : "LICENSES"
+                } ]
+              }
+            },
+            "schema" : {
+              "$ref" : "#/definitions/subscriptionAspect"
+            }
+          },
+          "404" : {
+            "description" : "The specified product does not exist or no such `mixinId` is available.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/productsBatch/delete" : {
+      "post" : {
+        "tags" : [ "Batch Requests" ],
+        "summary" : "Deletes multiple products with specific IDs.",
+        "description" : "Deletes multiple products with specific identifiers.",
+        "operationId" : "deleteByProductIdBatchUsingPOST",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "The products to be deleted.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/batchIdPayload"
+          }
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_delete" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Request was successful.",
+            "examples" : {
+              "application/json" : [ {
+                "headers" : { },
+                "body" : { },
+                "statusCode" : "NO_CONTENT",
+                "statusCodeValue" : 204
+              }, {
+                "headers" : { },
+                "body" : { },
+                "statusCode" : "NO_CONTENT",
+                "statusCodeValue" : 204
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/definitions/batchResponse"
+            }
+          },
+          "400" : {
+            "description" : "Your input data is not valid or not in a consistent format. Please check it and try again. <br>You can also check the response payload for more information.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/productsBatch/get" : {
+      "post" : {
+        "tags" : [ "Batch Requests" ],
+        "summary" : "Retrieves multiple products with specific IDs.",
+        "description" : "Retrieves multiple products with specific identifiers.",
+        "operationId" : "getByProductIdBatchUsingPOST",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "The products to be retrieved.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/batchIdPayload"
+          }
+        }, {
+          "$ref" : "#/parameters/coreOnlySingle"
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_view" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Request was successful.",
+            "examples" : {
+              "application/json" : [ {
+                "headers" : { },
+                "body" : {
+                  "id" : "d69c4164a50754edfb30a746",
+                  "code" : "3-year-onsite-warranty",
+                  "name" : "3-year-onsite-warranty",
+                  "description" : "3-year-onsite-warranty",
+                  "soldElectronically" : true,
+                  "published" : true,
+                  "productType" : "subscriptionProduct",
+                  "version" : 2,
+                  "metadata" : {
+                    "createdAt" : "2017-07-28T06:32:17.779Z",
+                    "changedAt" : "2017-08-25T07:29:31.263Z"
+                  },
+                  "markets" : [ {
+                    "marketId" : "A1",
+                    "active" : true
+                  } ],
+                  "customReferences" : [ {
+                    "typeCode" : "VENDOR_ID",
+                    "id" : "153986"
+                  }, {
+                    "typeCode" : "SKU",
+                    "id" : "300"
+                  } ],
+                  "mixins" : {
+                    "subscriptionProduct" : {
+                      "subscriptionAspectId" : "61f6d18e-abe3-40de-9ac3-77d418f014b1",
+                      "externalReference" : "test external reference 01",
+                      "subscriptionType" : "Commercial",
+                      "marketAttributesList" : [ {
+                        "marketId" : "A1",
+                        "ratePlanId" : "f992a90e-f19b-4283-92fc-7174de202a77",
+                        "ratePlanDescription" : "Test Rate Plan 01"
+                      } ],
+                      "contractTerm" : 24,
+                      "renewalTerm" : 12,
+                      "termOfNotice" : 14,
+                      "allowMidBillCycleExpiration" : true,
+                      "technicalResources" : [ {
+                        "type" : "MOBILE_DATA",
+                        "idType" : "Phone Number"
+                      }, {
+                        "type" : "MINUTES",
+                        "idType" : "Phone Number"
+                      } ],
+                      "subscriptionParameters" : [ {
+                        "code" : "LICENSE"
+                      } ]
+                    }
+                  }
+                },
+                "statusCode" : "OK",
+                "statusCodeValue" : 200
+              }, {
+                "headers" : { },
+                "body" : {
+                  "id" : "339943cb9216bdbd2709daa4",
+                  "code" : "3-year-bring-in-service",
+                  "name" : "3-year-bring-in-service",
+                  "description" : "3-year-bring-in-service",
+                  "soldElectronically" : true,
+                  "published" : true,
+                  "productType" : "subscriptionProduct",
+                  "version" : 6,
+                  "metadata" : {
+                    "createdAt" : "2018-06-14T08:04:13.782Z",
+                    "changedAt" : "2018-06-15T13:57:14.541Z"
+                  },
+                  "markets" : [ {
+                    "marketId" : "A1",
+                    "active" : true
+                  }, {
+                    "marketId" : "A2",
+                    "active" : true
+                  } ],
+                  "customReferences" : [ {
+                    "typeCode" : "VENDOR_ID",
+                    "id" : "153986"
+                  }, {
+                    "typeCode" : "SKU",
+                    "id" : "300"
+                  } ],
+                  "mixins" : {
+                    "subscriptionProduct" : {
+                      "subscriptionAspectId" : "49f77c73-15c5-47f5-af0a-e1320b00e209",
+                      "externalReference" : "external reference 02",
+                      "subscriptionType" : "Commercial",
+                      "marketAttributesList" : [ {
+                        "marketId" : "A1",
+                        "ratePlanId" : "6b30ad58-5c4a-403f-91da-b06e1dbf8c7b",
+                        "ratePlanDescription" : "Rate Plan 02"
+                      }, {
+                        "marketId" : "r432r23",
+                        "ratePlanId" : "e6f68295-321c-4fcf-af40-36273dc6bee9",
+                        "ratePlanDescription" : "Rate Plan 03"
+                      } ],
+                      "contractTerm" : 12,
+                      "renewalTerm" : 12,
+                      "termOfNotice" : 14,
+                      "allowMidBillCycleExpiration" : true,
+                      "technicalResources" : [ {
+                        "type" : "MOBILE_DATA",
+                        "idType" : "Phone Number"
+                      }, {
+                        "type" : "MINUTES",
+                        "idType" : "Phone Number"
+                      } ],
+                      "subscriptionParameters" : [ {
+                        "code" : "LICENSE"
+                      } ]
+                    }
+                  }
+                },
+                "statusCode" : "OK",
+                "statusCodeValue" : 200
+              }, {
+                "headers" : { },
+                "body" : { },
+                "statusCode" : "NOT_FOUND",
+                "statusCodeValue" : 404
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/definitions/batchResponse"
+            }
+          },
+          "400" : {
+            "description" : "Your input data is not valid or not in a consistent format. Please check it and try again. <br>You can also check the response payload for more information.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/productsBatch/post" : {
+      "post" : {
+        "tags" : [ "Batch Requests" ],
+        "summary" : "Creates multiple products.",
+        "description" : "Creates multiple products.",
+        "operationId" : "postByProductBatchUsingPOST",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "The products to be created.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/batchPayloadProductPOST"
+          }
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_manage" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Request was successful.",
+            "examples" : {
+              "application/json" : [ {
+                "headers" : { },
+                "body" : {
+                  "id" : "60fc3fd6-9ad2-4be9-a577-f7a526de293c",
+                  "code" : "A06",
+                  "name" : "Audio Books",
+                  "description" : "",
+                  "soldElectronically" : true,
+                  "published" : false,
+                  "productType" : "subscriptionProduct",
+                  "version" : 1,
+                  "metadata" : {
+                    "createdAt" : "2017-11-08T15:18:13.991Z",
+                    "changedAt" : "2017-11-08T15:18:13.991Z"
+                  },
+                  "markets" : [ {
+                    "marketId" : "A1",
+                    "active" : true
+                  } ],
+                  "customReferences" : [ {
+                    "typeCode" : "VENDOR_ID",
+                    "id" : "153986"
+                  }, {
+                    "typeCode" : "SKU",
+                    "id" : "300"
+                  } ],
+                  "mixins" : {
+                    "subscriptionProduct" : {
+                      "externalReference" : "",
+                      "subscriptionType" : "Commercial",
+                      "marketAttributesList" : [ ],
+                      "contractTerm" : 24,
+                      "renewalTerm" : 12,
+                      "termOfNotice" : 14,
+                      "allowMidBillCycleExpiration" : true,
+                      "technicalResources" : [ {
+                        "type" : "MOBILE_DATA",
+                        "idType" : "Phone Number"
+                      }, {
+                        "type" : "MINUTES",
+                        "idType" : "Phone Number"
+                      } ],
+                      "subscriptionParameters" : [ {
+                        "code" : "LICENSES"
+                      }, {
+                        "code" : "SEATS"
+                      } ]
+                    }
+                  }
+                },
+                "statusCode" : "CREATED",
+                "statusCodeValue" : 201
+              }, {
+                "headers" : { },
+                "body" : {
+                  "id" : "3145d7a3-05c8-4391-9e9a-cc53ba121310",
+                  "code" : "A01",
+                  "name" : "Audio Books",
+                  "description" : "",
+                  "soldElectronically" : true,
+                  "published" : false,
+                  "productType" : "subscriptionProduct",
+                  "version" : 1,
+                  "metadata" : {
+                    "createdAt" : "2017-11-08T15:18:13.991Z",
+                    "changedAt" : "2017-11-08T15:18:13.991Z"
+                  },
+                  "markets" : [ {
+                    "marketId" : "A1",
+                    "active" : true
+                  } ],
+                  "customReferences" : [ {
+                    "typeCode" : "VENDOR_ID",
+                    "id" : "153986"
+                  }, {
+                    "typeCode" : "SKU",
+                    "id" : "300"
+                  } ],
+                  "mixins" : {
+                    "subscriptionProduct" : {
+                      "externalReference" : "",
+                      "subscriptionType" : "Commercial",
+                      "marketAttributesList" : [ ],
+                      "contractTerm" : 24,
+                      "renewalTerm" : 12,
+                      "termOfNotice" : 14,
+                      "allowMidBillCycleExpiration" : true,
+                      "technicalResources" : [ {
+                        "type" : "MOBILE_DATA",
+                        "idType" : "Phone Number"
+                      }, {
+                        "type" : "MINUTES",
+                        "idType" : "Phone Number"
+                      } ],
+                      "subscriptionParameters" : [ {
+                        "code" : "LICENSES"
+                      }, {
+                        "code" : "SEATS"
+                      } ]
+                    }
+                  }
+                },
+                "statusCode" : "CREATED",
+                "statusCodeValue" : 201
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/definitions/batchResponse"
+            }
+          },
+          "400" : {
+            "description" : "Your input data is not valid or not in a consistent format. Please check it and try again. <br>You can also check the response payload for more information.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/productsBatch/put" : {
+      "post" : {
+        "tags" : [ "Batch Requests" ],
+        "summary" : "Updates multiple products with specific IDs.",
+        "description" : "Updates multiple products with specific identifiers.",
+        "operationId" : "putByProductIdBatchUsingPOST",
+        "consumes" : [ "application/json" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "body",
+          "description" : "The products to be updated.",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/batchPayloadProductPUT"
+          }
+        } ],
+        "security" : [ {
+          "oauth2" : [ "{identityzone}.product-rc_manage" ]
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Request was successful.",
+            "examples" : {
+              "application/json" : [ {
+                "headers" : { },
+                "body" : {
+                  "id" : "d9d4c9b4-5fbb-448e-8f33-a82615a6be86",
+                  "code" : "A05",
+                  "name" : "Audio Books",
+                  "description" : "",
+                  "soldElectronically" : true,
+                  "published" : true,
+                  "productType" : "subscriptionProduct",
+                  "version" : 2,
+                  "metadata" : {
+                    "createdAt" : "2017-08-29T11:57:13.100Z",
+                    "changedAt" : "2017-11-14T08:43:04.998Z"
+                  },
+                  "markets" : [ {
+                    "marketId" : "A3",
+                    "active" : true
+                  } ],
+                  "customReferences" : [ {
+                    "typeCode" : "VENDOR_ID",
+                    "id" : "153986"
+                  }, {
+                    "typeCode" : "SKU",
+                    "id" : "300"
+                  } ],
+                  "mixins" : {
+                    "subscriptionProduct" : {
+                      "externalReference" : "Test Reference",
+                      "subscriptionType" : "Commercial",
+                      "marketAttributesList" : [ {
+                        "marketId" : "A3",
+                        "ratePlanId" : "066a3218-6616-42da-ac22-8774e942d985",
+                        "ratePlanDescription" : "$1200/month (100 included) + $13/usage + $50 one time + $20/user E2E"
+                      } ],
+                      "contractTerm" : 24,
+                      "renewalTerm" : 12,
+                      "termOfNotice" : 14,
+                      "allowMidBillCycleExpiration" : true,
+                      "technicalResources" : [ {
+                        "type" : "MOBILE_DATA",
+                        "idType" : "Phone Number"
+                      }, {
+                        "type" : "MINUTES",
+                        "idType" : "Phone Number"
+                      } ],
+                      "subscriptionParameters" : [ {
+                        "code" : "LICENSES"
+                      }, {
+                        "code" : "SEATS"
+                      } ]
+                    }
+                  }
+                },
+                "statusCode" : "OK",
+                "statusCodeValue" : 200
+              }, {
+                "headers" : { },
+                "body" : {
+                  "id" : "c83f381f-3069-4cc8-b6d9-a41d5341802a",
+                  "code" : "A02",
+                  "name" : "Audio Books",
+                  "description" : "",
+                  "soldElectronically" : true,
+                  "published" : true,
+                  "productType" : "subscriptionProduct",
+                  "version" : 2,
+                  "metadata" : {
+                    "createdAt" : "2017-08-23T09:09:35.370Z",
+                    "changedAt" : "2017-11-14T08:43:04.999Z"
+                  },
+                  "markets" : [ {
+                    "marketId" : "A1",
+                    "active" : true
+                  } ],
+                  "customReferences" : [ {
+                    "typeCode" : "VENDOR_ID",
+                    "id" : "153986"
+                  }, {
+                    "typeCode" : "SKU",
+                    "id" : "300"
+                  } ],
+                  "mixins" : {
+                    "subscriptionProduct" : {
+                      "externalReference" : "Test External Reference",
+                      "subscriptionType" : "Commercial",
+                      "marketAttributesList" : [ {
+                        "marketId" : "A1",
+                        "ratePlanId" : "8af16cd9-1c06-4905-9682-434667196ced",
+                        "ratePlanDescription" : "$2000 one time E2E"
+                      } ],
+                      "contractTerm" : 24,
+                      "renewalTerm" : 12,
+                      "termOfNotice" : 14,
+                      "allowMidBillCycleExpiration" : true,
+                      "technicalResources" : [ {
+                        "type" : "MOBILE_DATA",
+                        "idType" : "Phone Number"
+                      }, {
+                        "type" : "MINUTES",
+                        "idType" : "Phone Number"
+                      } ],
+                      "subscriptionParameters" : [ {
+                        "code" : "LICENSES"
+                      }, {
+                        "code" : "SEATS"
+                      } ]
+                    }
+                  }
+                },
+                "statusCode" : "OK",
+                "statusCodeValue" : 200
+              } ]
+            },
+            "schema" : {
+              "$ref" : "#/definitions/batchResponse"
+            }
+          },
+          "400" : {
+            "description" : "Your input data is not valid or not in a consistent format. Please check it and try again. <br>You can also check the response payload for more information.",
+            "schema" : {
+              "$ref" : "#/definitions/error"
+            }
+          }
+        }
+      }
+    }
+  }
+}
